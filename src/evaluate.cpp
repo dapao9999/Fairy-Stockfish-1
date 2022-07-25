@@ -1527,115 +1527,69 @@ make_v:
     return v;
   }
 
-
-  /// Fisher Random Chess: correction for cornered bishops, to fix chess960 play with NNUE
-
-  Value fix_FRC(const Position& pos) {
-
-    constexpr Bitboard Corners =  Bitboard(1ULL) << SQ_A1 | Bitboard(1ULL) << SQ_H1 | Bitboard(1ULL) << SQ_A8 | Bitboard(1ULL) << SQ_H8;
-
-    if (!(pos.pieces(BISHOP) & Corners))
-        return VALUE_ZERO;
-
-    int correction = 0;
-
-    if (   pos.piece_on(SQ_A1) == W_BISHOP
-        && pos.piece_on(SQ_B2) == W_PAWN)
-        correction += !pos.empty(SQ_B3) ? -CorneredBishop * 4
-                                        : -CorneredBishop * 3;
-
-    if (   pos.piece_on(SQ_H1) == W_BISHOP
-        && pos.piece_on(SQ_G2) == W_PAWN)
-        correction += !pos.empty(SQ_G3) ? -CorneredBishop * 4
-                                        : -CorneredBishop * 3;
-
-    if (   pos.piece_on(SQ_A8) == B_BISHOP
-        && pos.piece_on(SQ_B7) == B_PAWN)
-        correction += !pos.empty(SQ_B6) ? CorneredBishop * 4
-                                        : CorneredBishop * 3;
-
-    if (   pos.piece_on(SQ_H8) == B_BISHOP
-        && pos.piece_on(SQ_G7) == B_PAWN)
-        correction += !pos.empty(SQ_G6) ? CorneredBishop * 4
-                                        : CorneredBishop * 3;
-
-    return pos.side_to_move() == WHITE ?  Value(correction)
-                                       : -Value(correction);
-  }
-
 } // namespace Eval
 
 
 /// evaluate() is the evaluator for the outer world. It returns a static
 /// evaluation of the position from the point of view of the side to move.
 
-Value Eval::evaluate(const Position& pos) {
+Value Eval::evaluate(const Position& pos, int* complexity) {
 
   pos.this_thread()->on_eval();
 
   Value v;
 
-  if (NNUE::useNNUE == NNUE::UseNNUEMode::Pure && pos.nnue_applicable()) {
-      v = NNUE::evaluate(pos);
+  if (NNUE::useNNUE == NNUE::UseNNUEMode::Pure) {
+      v = NNUE::evaluate(pos, false, complexity);
 
       // Guarantee evaluation does not hit the tablebase range
       v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 
       return v;
   }
-  else if (NNUE::useNNUE == NNUE::UseNNUEMode::False || !pos.nnue_applicable())
+
+  Color stm = pos.side_to_move();
+  Value psq = pos.psq_eg_stm();
+  // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
+  // but we switch to NNUE during long shuffling or with high material on the board.
+  bool useClassical =    (pos.this_thread()->depth > 9 || pos.count<ALL_PIECES>() > 7)
+                      && abs(psq) * 5 > (856 + pos.non_pawn_material() / 64) * (10 + pos.rule50_count());
+
+  // Deciding between classical and NNUE eval (~10 Elo): for high PSQ imbalance we use classical,
+  // but we switch to NNUE during long shuffling or with high material on the board.
+  if (NNUE::useNNUE == NNUE::UseNNUEMode::False || useClassical)
+  {
       v = Evaluation<NO_TRACE>(pos).value();
-  else
-  {
-      // Scale and shift NNUE for compatibility with search and classical evaluation
-      auto  adjusted_NNUE = [&]()
-      {
-
-         int scale = 1200; // try to avoid divergence in reinforcement learning
-
-         Value nnue = NNUE::evaluate(pos, true) * scale / 1024;
-
-         if (pos.is_chess960())
-             nnue += fix_FRC(pos);
-
-         if (pos.check_counting())
-         {
-             Color us = pos.side_to_move();
-             nnue +=  6 * scale / (5 * pos.checks_remaining( us))
-                    - 6 * scale / (5 * pos.checks_remaining(~us));
-         }
-
-         return nnue;
-      };
-
-      // If there is PSQ imbalance we use the classical eval, but we switch to
-      // NNUE eval faster when shuffling or if the material on the board is high.
-      int r50 = pos.rule50_count();
-      Value psq = Value(abs(eg_value(pos.psq_score())));
-      bool pure = !pos.check_counting();
-      bool classical = psq * 5 > (750 + pos.non_pawn_material() / 64) * (5 + r50) && !pure;
-
-      v = classical ? Evaluation<NO_TRACE>(pos).value()  // classical
-                    : adjusted_NNUE();                   // NNUE
+      useClassical = abs(v) >= 297;
   }
 
-  // Damp down the evaluation linearly when shuffling
-  if (pos.n_move_rule())
+  // If result of a classical evaluation is much lower than threshold fall back to NNUE
+  if (NNUE::useNNUE != NNUE::UseNNUEMode::False && !useClassical)
   {
-      v = v * (2 * pos.n_move_rule() - pos.rule50_count()) / (2 * pos.n_move_rule());
-      if (pos.material_counting())
-          v += pos.material_counting_result() / (10 * std::max(2 * pos.n_move_rule() - pos.rule50_count(), 1));
+       int nnueComplexity;
+       int scale = 1064 + 106 * pos.non_pawn_material() / 5120;
+       Value optimism = pos.this_thread()->optimism[stm];
+
+       Value nnue = NNUE::evaluate(pos, true, &nnueComplexity);
+       // Blend nnue complexity with (semi)classical complexity
+       nnueComplexity = (104 * nnueComplexity + 131 * abs(nnue - psq)) / 256;
+       if (complexity) // Return hybrid NNUE complexity to caller
+           *complexity = nnueComplexity;
+
+       optimism = optimism * (269 + nnueComplexity) / 256;
+       v = (nnue * scale + optimism * (scale - 754)) / 1024;
   }
 
-  // Guarantee evaluation does not hit the virtual win/loss range
-  if (pos.two_boards() && std::abs(v) >= VALUE_VIRTUAL_MATE_IN_MAX_PLY)
-      v += v > VALUE_ZERO ? MAX_PLY + 1 : -MAX_PLY - 1;
+  // When not using NNUE, return classical complexity to caller
+  if (complexity && (NNUE::useNNUE == NNUE::UseNNUEMode::False || useClassical))
+       *complexity = abs(v - psq);
 
   // Guarantee evaluation does not hit the tablebase range
   v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 
   return v;
 }
+
 
 /// trace() is like evaluate(), but instead of returning a value, it returns
 /// a string (suitable for outputting to stdout) that contains the detailed
@@ -1691,7 +1645,7 @@ std::string Eval::trace(Position& pos) {
   ss << "\nClassical evaluation   " << to_cp(v) << " (white side)\n";
   if (NNUE::useNNUE != NNUE::UseNNUEMode::False && pos.nnue_applicable())
   {
-      v = NNUE::evaluate(pos, false);
+      v = NNUE::evaluate(pos);
       v = pos.side_to_move() == WHITE ? v : -v;
       ss << "NNUE evaluation        " << to_cp(v) << " (white side)\n";
   }

@@ -1580,12 +1580,12 @@ Value Eval::evaluate(const Position& pos, int* complexity) {
        v = (nnue * scale + optimism * (scale - 754)) / 1024;
   }
 
+  // Guarantee evaluation does not hit the tablebase range
+  v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+
   // When not using NNUE, return classical complexity to caller
   if (complexity && (NNUE::useNNUE == NNUE::UseNNUEMode::False || useClassical))
        *complexity = abs(v - psq);
-
-  // Guarantee evaluation does not hit the tablebase range
-  v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 
   return v;
 }

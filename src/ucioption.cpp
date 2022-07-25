@@ -47,9 +47,7 @@ namespace UCI {
 
 // standard variants of XBoard/WinBoard
 std::set<string> standard_variants = {
-    "normal", "nocastle", "fischerandom", "knightmate", "3check", "makruk", "shatranj",
-    "asean", "seirawan", "crazyhouse", "bughouse", "suicide", "giveaway", "losers", "atomic",
-    "capablanca", "gothic", "janus", "caparandom", "grand", "shogi", "xiangqi"
+    "normal", "xiangqi"
 };
 
 void init_variant(const Variant* v) {
@@ -123,75 +121,13 @@ void on_variant_change(const Option &o) {
     if (standard_variants.find(o) != standard_variants.end())
         return;
     int pocketsize = v->pieceDrops ? (v->pocketSize ? v->pocketSize : v->pieceTypes.size()) : 0;
-    if (CurrentProtocol == XBOARD)
-    {
-        // Overwrite setup command for Janggi variants
-        auto itJanggi = variants.find("janggi");
-        if (   itJanggi != variants.end()
-            && v->variantTemplate == itJanggi->second->variantTemplate
-            && v->startFen == itJanggi->second->startFen
-            && v->pieceToCharTable == itJanggi->second->pieceToCharTable)
-        {
-            sync_cout << "setup (PH.R.AE..K.C.ph.r.ae..k.c.) 9x10+0_janggi "
-                      << "rhea1aehr/4k4/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/4K4/RHEA1AEHR w - - 0 1"
-                      << sync_endl;
-            return;
-        }
-        // Send setup command
-        sync_cout << "setup (" << v->pieceToCharTable << ") "
-                  << v->maxFile + 1 << "x" << v->maxRank + 1
-                  << "+" << pocketsize << "_" << v->variantTemplate
-                  << " " << v->startFen
-                  << sync_endl;
-        // Send piece command with Betza notation
-        // https://www.gnu.org/software/xboard/Betza.html
-        for (PieceType pt : v->pieceTypes)
-        {
-            string suffix =   pt == PAWN && v->doubleStep     ? "ifmnD"
-                            : pt == KING && v->cambodianMoves ? "ismN"
-                            : pt == FERS && v->cambodianMoves ? "ifD"
-                                                              : "";
-            // Janggi palace moves
-            if (v->diagonalLines)
-            {
-                PieceType pt2 = pt == KING ? v->kingType : pt;
-                if (pt2 == WAZIR)
-                    suffix += "F";
-                else if (pt2 == SOLDIER)
-                    suffix += "fF";
-                else if (pt2 == ROOK)
-                    suffix += "B";
-                else if (pt2 == JANGGI_CANNON)
-                    suffix += "pB";
-            }
-            // Castling
-            if (pt == KING && v->castling)
-                 suffix += "O" + std::to_string((v->castlingKingsideFile - v->castlingQueensideFile) / 2);
-            // Drop region
-            if (v->pieceDrops)
-            {
-                if (pt == PAWN && !v->firstRankPawnDrops)
-                    suffix += "j";
-                else if (pt == v->dropNoDoubled)
-                    suffix += std::string(v->dropNoDoubledCount, 'f');
-                else if (pt == BISHOP && v->dropOppositeColoredBishop)
-                    suffix += "s";
-                suffix += "@" + std::to_string(pt == PAWN && !v->promotionZonePawnDrops ? v->promotionRank : v->maxRank + 1);
-            }
-            sync_cout << "piece " << v->pieceToChar[pt] << "& " << pieceMap.find(pt == KING ? v->kingType : pt)->second->betza << suffix << sync_endl;
-            PieceType promType = v->promotedPieceType[pt];
-            if (promType)
-                sync_cout << "piece +" << v->pieceToChar[pt] << "& " << pieceMap.find(promType)->second->betza << sync_endl;
-        }
-    }
-    else
-        sync_cout << "info string variant " << (std::string)o
-                << " files " << v->maxFile + 1
-                << " ranks " << v->maxRank + 1
-                << " pocket " << pocketsize
-                << " template " << v->variantTemplate
-                << " startpos " << v->startFen
-                << sync_endl;
+    sync_cout << "info string variant " << (std::string)o
+            << " files " << v->maxFile + 1
+            << " ranks " << v->maxRank + 1
+            << " pocket " << pocketsize
+            << " template " << v->variantTemplate
+            << " startpos " << v->startFen
+            << sync_endl;
 }
 
 
@@ -296,15 +232,7 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
           if (it.second.idx == idx)
           {
               const Option& o = it.second;
-              // UCI dialects do not allow spaces
-              if (CurrentProtocol == UCCI || CurrentProtocol == USI)
-              {
-                  string name = option_name(it.first);
-                  // UCCI skips "name"
-                  os << "\noption " << (CurrentProtocol == UCCI ? "" : "name ") << name << " type " << o.type;
-              }
-              else
-                  os << "\noption name " << it.first << " type " << o.type;
+              os << "\noption name " << it.first << " type " << o.type;
 
               if (o.type == "string" || o.type == "check" || o.type == "combo")
                   os << " default " << o.defaultValue;

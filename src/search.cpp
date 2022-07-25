@@ -2157,7 +2157,6 @@ namespace Search
       th->selDepth = 0;
       th->rootDepth = 0;
       th->nmpMinPly = th->bestMoveChanges = th->failedHighCnt = 0;
-      th->ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
 
       // Zero initialization of the number of search nodes
       th->nodes = 0;
@@ -2915,12 +2914,10 @@ namespace Search
           ttMove,
           depth,
           &(thread->mainHistory),
-          &(thread->lowPlyHistory),
           &(thread->captureHistory),
           contHist,
           countermove,
-          killers,
-          ply
+          killers
         );
 
         int moveCount = 0;
@@ -2955,7 +2952,6 @@ namespace Search
         th->selDepth = 0;
         th->rootDepth = 0;
         th->nmpMinPly = th->bestMoveChanges = th->failedHighCnt = 0;
-        th->ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
         th->nodes = 0;
       }
 

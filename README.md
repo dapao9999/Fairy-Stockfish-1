@@ -1,3 +1,9 @@
+# Variant NNUE training data generator
+
+This is a variant NNUE training data generator based on [Fairy-Stockfish](https://github.com/ianfab/Fairy-Stockfish) to generate data for the [variant NNUE trainer](https://github.com/ianfab/variant-nnue-pytorch). See the [wiki of the training code](https://github.com/ianfab/variant-nnue-pytorch/wiki/Training-data-generation) for more information.
+
+You can download binaries from the [releases](https://github.com/ianfab/variant-nnue-tools/releases) or the [development versions](https://github.com/ianfab/variant-nnue-tools/actions/workflows/release.yml).
+
 # Fairy-Stockfish
 
 ## Overview
@@ -37,7 +43,6 @@ The games currently supported besides chess are listed below. Fairy-Stockfish ca
 - [Sittuyin](https://en.wikipedia.org/wiki/Sittuyin)
 - [Shatar](https://en.wikipedia.org/wiki/Shatar), [Jeson Mor](https://en.wikipedia.org/wiki/Jeson_Mor)
 - [Shatranj](https://en.wikipedia.org/wiki/Shatranj), [Courier](https://en.wikipedia.org/wiki/Courier_chess)
-- [Raazuvaa](https://www.reddit.com/r/chess/comments/sj7y3n/raazuvaa_the_chess_of_the_maldives)
 
 ### Chess variants
 - [Capablanca](https://en.wikipedia.org/wiki/Capablanca_Chess), [Janus](https://en.wikipedia.org/wiki/Janus_Chess), [Modern](https://en.wikipedia.org/wiki/Modern_Chess_(chess_variant)), [Chancellor](https://en.wikipedia.org/wiki/Chancellor_Chess), [Embassy](https://en.wikipedia.org/wiki/Embassy_Chess), [Gothic](https://www.chessvariants.com/large.dir/gothicchess.html), [Capablanca random chess](https://en.wikipedia.org/wiki/Capablanca_Random_Chess)
@@ -56,7 +61,6 @@ The games currently supported besides chess are listed below. Fairy-Stockfish ca
 - [Atomic](https://en.wikipedia.org/wiki/Atomic_chess)
 - [Horde](https://en.wikipedia.org/wiki/Dunsany%27s_Chess#Horde_Chess), [Maharajah and the Sepoys](https://en.wikipedia.org/wiki/Maharajah_and_the_Sepoys)
 - [Knightmate](https://www.chessvariants.com/diffobjective.dir/knightmate.html), [Nightrider](https://en.wikipedia.org/wiki/Nightrider_(chess)), [Grasshopper](https://en.wikipedia.org/wiki/Grasshopper_chess)
-- [Dragon Chess](https://www.edami.com/dragonchess/)
 
 ### Shogi variants
 - [Minishogi](https://en.wikipedia.org/wiki/Minishogi), [EuroShogi](https://en.wikipedia.org/wiki/EuroShogi), [Judkins shogi](https://en.wikipedia.org/wiki/Judkins_shogi)
@@ -81,7 +85,7 @@ See the [Fairy-Stockfish Wiki](https://github.com/ianfab/Fairy-Stockfish/wiki) f
 
 ## Bindings
 
-Besides the C++ engine, this project also includes bindings for other programming languages in order to be able to use it as a library for chess variants. They support move, SAN, and FEN generation, as well as checking of game end conditions for all variants supported by Fairy-Stockfish. Since the bindings are using the C++ code, they are very performant compared to libraries directly written in the respective target language.
+Besides the C++ engine, this project also includes bindings for other programming languages in order to be able to use it as a library for chess variants. They support move, SAN, and FEN generation, as well as checking of game end conditions for all variants supported by Fairy-Stockfish. Since the bindings are using the C++ code, they are very performant compared to libraries directly written in the respective target language.  
 
 ### Python
 
@@ -262,6 +266,41 @@ For developers the following non-standard commands might be of interest, mainly 
   * #### flip
     Flips the side to move.
 
+### Generating Training Data
+
+To generate training data from the classic eval, use the generate_training_data command with the setting "Use NNUE" set to "false". The given example is generation in its simplest form. There are more commands.
+
+```
+uci
+setoption name PruneAtShallowDepth value false
+setoption name Use NNUE value false
+setoption name Threads value X
+setoption name Hash value Y
+setoption name SyzygyPath value path
+isready
+generate_training_data depth A count B keep_draws 1 eval_limit 32000
+```
+
+- `A` is the searched depth per move, or how far the engine looks forward. This value is an integer.
+- `B` is the amount of positions generated. This value is also an integer.
+
+Specify how many threads and how much memory you would like to use with the `x` and `y` values. The option SyzygyPath is not necessary, but if you would like to use it, you must first have Syzygy endgame tablebases on your computer, which you can find [here](http://oics.olympuschess.com/tracker/index.php). You will need to have a torrent client to download these tablebases, as that is probably the fastest way to obtain them. The `path` is the path to the folder containing those tablebases. It does not have to be surrounded in quotes.
+
+This will create a file named "training_data.binpack" in the same folder as the binary containing the generated training data. Once generation is done, you can rename the file to something like "1billiondepth12.binpack" to remember the depth and quantity of the positions and move it to a folder named "trainingdata" in the same directory as the binaries.
+
+You will also need validation data that is used for loss calculation and accuracy computation. Validation data is generated in the same way as training data, but generally at most 1 million positions should be used as there's no need for more and it would just slow the learning process down. It may also be better to slightly increase the depth for validation data. After generation you can rename the validation data file to "val.binpack" and drop it in a folder named "validationdata" in the same directory to make it easier.
+
+## Training data formats.
+
+Currently there are 3 training data formats. Two of them are supported directly.
+
+- `.bin` - the original training data format. Uses 40 bytes per entry. Is supported directly by the `generate_training_data` command.
+- `.plain` - a human readable training data format. This one is not supported directly by the `generate_training_data` command. It should not be used for data exchange because it's less compact than other formats. It is mostly useful for inspection of the data.
+- `.binpack` - a compact binary training data format that exploits positions chains to further reduce size. It uses on average between 2 to 3 bytes per entry when generating data with `generate_training_data`. It is supported directly by `generate_training_data` command. It is currently the default for the `generate_training_data` command. A more in depth description can be found [here](docs/binpack.md)
+
+### Conversion between formats.
+
+There is a builting converted that support all 3 formats described above. Any of them can be converted to any other. For more information and usage guide see [here](docs/convert.md).
 
 ## A note on classical evaluation versus NNUE evaluation
 

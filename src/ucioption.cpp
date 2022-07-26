@@ -151,15 +151,12 @@ void init(OptionsMap& o) {
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(false);
   o["MultiPV"]               << Option(1, 1, 500);
-  o["Skill Level"]           << Option(20, -20, 20);
   o["Move Overhead"]         << Option(10, 0, 5000);
   o["Slow Mover"]            << Option(100, 10, 1000);
   o["nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
   o["UCI_Variant"]           << Option("chess", variants.get_keys(), on_variant_change);
   o["UCI_AnalyseMode"]       << Option(false);
-  o["UCI_LimitStrength"]     << Option(false);
-  o["UCI_Elo"]               << Option(1350, 500, 2850);
   o["UCI_ShowWDL"]           << Option(false);
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
@@ -195,37 +192,6 @@ void init(OptionsMap& o) {
 /// insertion order (the idx field) and in the format defined by the UCI protocol.
 
 std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
-
-  if (CurrentProtocol == XBOARD)
-  {
-      for (size_t idx = 0; idx < om.size(); ++idx)
-          for (const auto& it : om)
-              if (it.second.idx == idx && it.first != "UCI_Variant" && it.first != "Threads" && it.first != "Hash")
-              {
-                  const Option& o = it.second;
-                  os << "\nfeature option=\"" << it.first << " -" << o.type;
-
-                  if (o.type == "string" || o.type == "combo")
-                      os << " " << o.defaultValue;
-                  else if (o.type == "check")
-                      os << " " << int(o.defaultValue == "true");
-
-                  if (o.type == "combo")
-                      for (string value : o.comboValues)
-                          if (value != o.defaultValue)
-                              os << " /// " << value;
-
-                  if (o.type == "spin")
-                      os << " " << int(stof(o.defaultValue))
-                         << " " << o.min
-                         << " " << o.max;
-
-                  os << "\"";
-
-                  break;
-              }
-  }
-  else
 
   for (size_t idx = 0; idx < om.size(); ++idx)
       for (const auto& it : om)

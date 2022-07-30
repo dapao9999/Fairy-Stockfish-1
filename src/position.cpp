@@ -399,11 +399,6 @@ Position& Position::set(const Variant* v, const string& fenStr, bool isChess960,
                && ((ss >> row) && (row >= '1' && row <= '1' + max_rank())))
       {
           st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
-#ifdef LARGEBOARDS
-          // Consider different rank numbering in CECP
-          if (max_rank() == RANK_10 && CurrentProtocol == XBOARD)
-              st->epSquare += NORTH;
-#endif
 
           // En passant square will be considered only if
           // a) side to move have a pawn threatening epSquare
@@ -2355,7 +2350,7 @@ bool Position::is_optional_game_end(Value& result, int ply, int countStarted) co
               checkThem += bool(stp->checkersBB);
               checkUs += bool(stp->previous->checkersBB);
           }
-          offset = 2 * std::max(std::max(checkThem, checkUs) - 10, 0) + 20 * (CurrentProtocol == UCCI || CurrentProtocol == UCI_CYCLONE);
+          offset = 2 * std::max(std::max(checkThem, checkUs) - 10, 0) + 20 * CurrentProtocol == UCI_CYCLONE;
       }
       if (st->rule50 - offset > (2 * n_move_rule() - 1))
       {

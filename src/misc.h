@@ -39,7 +39,7 @@
 
 namespace Stockfish {
 
-std::string engine_info(bool to_uci = false, bool to_xboard = false);
+std::string engine_info(bool to_uci = false);
 std::string compiler_info();
 void prefetch(void* addr);
 void start_logger(const std::string& fname);

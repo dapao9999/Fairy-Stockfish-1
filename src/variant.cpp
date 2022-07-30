@@ -57,56 +57,35 @@ namespace {
         v->add_piece(FERS, 'f');
         return v;
     }
-    // Minixiangqi
-    // http://mlwi.magix.net/bg/minixiangqi.htm
-    Variant* minixiangqi_variant() {
+#ifdef LARGEBOARDS
+    Variant* xiangqi_variant() {
         Variant* v = chess_variant_base()->init();
         v->variantTemplate = "xiangqi";
-        v->pieceToCharTable = "PN.R.....K.C.pn.r.....k.c.";
-        v->maxRank = RANK_7;
-        v->maxFile = FILE_G;
+        v->pieceToCharTable = "PN.R.AB..K.C..........pn.r.ab..k.c..........";
+        v->maxRank = RANK_10;
+        v->maxFile = FILE_I;
         v->reset_pieces();
         v->add_piece(ROOK, 'r');
         v->add_piece(HORSE, 'n', 'h');
         v->add_piece(KING, 'k');
         v->add_piece(CANNON, 'c');
         v->add_piece(SOLDIER, 'p');
-        v->startFen = "rcnkncr/p1ppp1p/7/7/7/P1PPP1P/RCNKNCR w - - 0 1";
-        v->mobilityRegion[WHITE][KING] = (Rank1BB | Rank2BB | Rank3BB) & (FileCBB | FileDBB | FileEBB);
-        v->mobilityRegion[BLACK][KING] = (Rank5BB | Rank6BB | Rank7BB) & (FileCBB | FileDBB | FileEBB);
-        v->kingType = WAZIR;
-        v->promotionPieceTypes = {};
-        v->doubleStep = false;
-        v->castling = false;
-        v->stalemateValue = -VALUE_MATE;
-        //v->nFoldValue = VALUE_MATE;
-        v->perpetualCheckIllegal = true;
-        v->flyingGeneral = true;
-        return v;
-    }
-#ifdef LARGEBOARDS
-    // Xiangqi (Chinese chess)
-    // https://en.wikipedia.org/wiki/Xiangqi
-    // Xiangqi base variant for inheriting rules without chasing rules
-    Variant* xiangqi_variant_base() {
-        Variant* v = minixiangqi_variant()->init();
-        v->pieceToCharTable = "PN.R.AB..K.C..........pn.r.ab..k.c..........";
-        v->maxRank = RANK_10;
-        v->maxFile = FILE_I;
         v->add_piece(ELEPHANT, 'b', 'e');
         v->add_piece(FERS, 'a');
-        v->startFen = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1";
         v->mobilityRegion[WHITE][KING] = (Rank1BB | Rank2BB | Rank3BB) & (FileDBB | FileEBB | FileFBB);
         v->mobilityRegion[BLACK][KING] = (Rank8BB | Rank9BB | Rank10BB) & (FileDBB | FileEBB | FileFBB);
         v->mobilityRegion[WHITE][FERS] = v->mobilityRegion[WHITE][KING];
         v->mobilityRegion[BLACK][FERS] = v->mobilityRegion[BLACK][KING];
         v->mobilityRegion[WHITE][ELEPHANT] = Rank1BB | Rank2BB | Rank3BB | Rank4BB | Rank5BB;
         v->mobilityRegion[BLACK][ELEPHANT] = Rank6BB | Rank7BB | Rank8BB | Rank9BB | Rank10BB;
+        v->kingType = WAZIR;
+        v->promotionPieceTypes = {};
+        v->doubleStep = false;
+        v->castling = false;
+        v->stalemateValue = -VALUE_MATE;
+        v->perpetualCheckIllegal = true;
+        v->flyingGeneral = true;
         v->soldierPromotionRank = RANK_6;
-        return v;
-    }
-    Variant* xiangqi_variant() {
-        Variant* v = xiangqi_variant_base()->init();
         v->chasingRule = AXF_CHASING;
         v->nMoveRule = 0;
         return v;

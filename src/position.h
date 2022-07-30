@@ -512,7 +512,7 @@ inline Rank Position::double_step_rank_min() const {
 
 inline bool Position::castling_enabled() const {
   assert(var != nullptr);
-  return var->castling;
+  return false;
 }
 
 inline bool Position::castling_dropped_piece() const {
@@ -856,16 +856,6 @@ inline Value Position::checkmate_value(int ply) const {
       }
       // Niol
       return VALUE_DRAW;
-  }
-  // Checkmate using virtual pieces
-  if (two_boards() && var->checkmateValue < VALUE_ZERO)
-  {
-      Value virtualMaterial = VALUE_ZERO;
-      for (PieceType pt : piece_types())
-          virtualMaterial += std::max(-count_in_hand(~sideToMove, pt), 0) * PieceValue[MG][pt];
-
-      if (virtualMaterial > 0)
-          return -VALUE_VIRTUAL_MATE + virtualMaterial / 20 + ply;
   }
   // Return mate value
   return convert_mate_value(var->checkmateValue, ply);
@@ -1385,7 +1375,7 @@ inline void Position::remove_from_hand(Piece pc) {
 }
 
 inline void Position::drop_piece(Piece pc_hand, Piece pc_drop, Square s) {
-  assert(can_drop(color_of(pc_hand), type_of(pc_hand)) || var->twoBoards);
+  assert(can_drop(color_of(pc_hand), type_of(pc_hand)));
   put_piece(pc_drop, s, pc_drop != pc_hand, pc_drop != pc_hand ? pc_hand : NO_PIECE);
   remove_from_hand(pc_hand);
   virtualPieces += (pieceCountInHand[color_of(pc_hand)][type_of(pc_hand)] < 0);
@@ -1396,7 +1386,7 @@ inline void Position::undrop_piece(Piece pc_hand, Square s) {
   remove_piece(s);
   board[s] = NO_PIECE;
   add_to_hand(pc_hand);
-  assert(can_drop(color_of(pc_hand), type_of(pc_hand)) || var->twoBoards);
+  assert(can_drop(color_of(pc_hand), type_of(pc_hand)));
 }
 
 inline bool Position::can_drop(Color c, PieceType pt) const {

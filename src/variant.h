@@ -48,7 +48,7 @@ struct Variant {
   std::string pieceToChar =  " PNBRQ" + std::string(KING - QUEEN - 1, ' ') + "K" + std::string(PIECE_TYPE_NB - KING - 1, ' ')
                            + " pnbrq" + std::string(KING - QUEEN - 1, ' ') + "k" + std::string(PIECE_TYPE_NB - KING - 1, ' ');
   std::string pieceToCharSynonyms = std::string(PIECE_NB, ' ');
-  std::string startFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  std::string startFen = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1";
   Bitboard mobilityRegion[COLOR_NB][PIECE_TYPE_NB] = {};
   Rank promotionRank = RANK_8;
   std::set<PieceType, std::greater<PieceType> > promotionPieceTypes = { QUEEN, ROOK, BISHOP, KNIGHT };
@@ -199,9 +199,8 @@ struct Variant {
                     && !diagonalLines;
       fastAttacks2 = std::all_of(pieceTypes.begin(), pieceTypes.end(), [this](PieceType pt) {
                                     return (   pt < FAIRY_PIECES
-                                            || pt == COMMONER || pt == FERS || pt == WAZIR || pt == BREAKTHROUGH_PIECE
-                                            || pt == SHOGI_PAWN || pt == GOLD || pt == SILVER || pt == SHOGI_KNIGHT
-                                            || pt == DRAGON || pt == DRAGON_HORSE || pt == LANCE
+                                            || pt == COMMONER || pt == FERS || pt == WAZIR
+                                            || pt == GOLD || pt == SILVER || pt == LANCE
                                             || (pt == KING && kingType == KING))
                                           && !(mobilityRegion[WHITE][pt] || mobilityRegion[BLACK][pt]);
                                 })
@@ -268,8 +267,6 @@ struct Variant {
           if (pieceToChar.find(token) != std::string::npos || pieceToCharSynonyms.find(token) != std::string::npos)
               nnueMaxPieces++;
       }
-      if (twoBoards)
-          nnueMaxPieces *= 2;
 
       // For endgame evaluation to be applicable, no special win rules must apply.
       // Furthermore, rules significantly changing game mechanics also invalidate it.
@@ -282,13 +279,12 @@ struct Variant {
                     && !materialCounting
                     && !flagPiece
                     && !mustCapture
-                    && !checkCounting
-                    && !makpongRule
                     && !connectN
                     && !blastOnCapture
                     && !capturesToHand
-                    && !twoBoards
                     && kingType == KING;
+
+
       return this;
   }
 };

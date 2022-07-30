@@ -142,7 +142,7 @@ public:
 /// the program was compiled) or "Stockfish <Version>", depending on whether
 /// Version is empty.
 
-string engine_info(bool to_uci, bool to_xboard) {
+string engine_info(bool to_uci) {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   string month, day, year;
@@ -159,8 +159,6 @@ string engine_info(bool to_uci, bool to_xboard) {
 #ifdef LARGEBOARDS
   ss << " LB";
 #endif
-
-  if (!to_xboard)
     ss << (to_uci  ? "\nid author ": " by ")
        << "Fabian Fichter";
 

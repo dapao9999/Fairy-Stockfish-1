@@ -20,7 +20,6 @@
 #include <cfloat>
 #include <cmath>
 
-#include "partner.h"
 #include "search.h"
 #include "timeman.h"
 #include "uci.h"

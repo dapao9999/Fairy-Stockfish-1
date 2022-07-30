@@ -232,7 +232,7 @@ void init(const Variant* v) {
       }
 
       // Piece values saturate earlier in drop variants
-      if (v->capturesToHand || v->twoBoards)
+      if (v->capturesToHand)
           score = make_score(mg_value(score) * 7000 / (7000 + mg_value(score)),
                              eg_value(score) * 7000 / (7000 + eg_value(score)));
 
@@ -240,19 +240,6 @@ void init(const Variant* v) {
       if (!v->checking)
           score = make_score(std::min(mg_value(score), Value(1800)) / 2,
                              std::min(eg_value(score), Value(1800)) * 3 / 5);
-
-      // With check counting, strong pieces are even more dangerous
-      else if (v->checkCounting)
-          score = make_score(mg_value(score) * (20000 + mg_value(score)) / 22000,
-                             eg_value(score) * (20000 + eg_value(score)) / 21000);
-
-      // Increase leapers' value in makpong
-      else if (v->makpongRule)
-      {
-          if (std::any_of(pi->steps[MODALITY_CAPTURE].begin(), pi->steps[MODALITY_CAPTURE].end(), [](const std::pair<const Direction, int>& d) { return dist(d.first) > 1 && !d.second; }))
-              score = make_score(mg_value(score) * 4200 / (3500 + mg_value(score)),
-                                 eg_value(score) * 4700 / (3500 + mg_value(score)));
-      }
 
       // Adjust piece values for atomic captures
       if (v->blastOnCapture)
@@ -299,7 +286,7 @@ void init(const Variant* v) {
       {
           if (token == '/')
               --rc;
-          else if (token == v->pieceToChar[PAWN] || token == v->pieceToChar[SHOGI_PAWN])
+          else if (token == v->pieceToChar[PAWN])
               pawnRank = rc;
       }
 
@@ -328,7 +315,7 @@ void init(const Variant* v) {
           if (v->blastOnCapture)
               psq[pc][s] += make_score(40, 0) * (r - v->maxRank / 2);
           // Safe king squares
-          if (r == RANK_1 && f <= FILE_B && ((pt == KING && v->checkCounting) || (pt == COMMONER && v->blastOnCapture)))
+          if (r == RANK_1 && f <= FILE_B && (pt == COMMONER && v->blastOnCapture))
               psq[pc][s] += make_score(100, 0);
           psq[~pc][rank_of(s) <= v->maxRank ? flip_rank(s, v->maxRank) : s] = -psq[pc][s];
       }

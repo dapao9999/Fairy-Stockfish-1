@@ -1,0 +1,23 @@
+name: Linux
+
+on:
+  push:
+    branches: [ master, tools ]
+
+jobs:
+  linux:
+    strategy:
+      matrix:
+        arch: ["x86-64-bmi2"]
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: make
+        run: cd src && make clean && make -j build COMP=gcc ARCH=${{ matrix.arch }} EXE=${{ matrix.arch }} largeboards=yes && strip ${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: fairy-stockfish-linux
+          path: src/x86-64*

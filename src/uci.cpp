@@ -75,7 +75,7 @@ namespace {
         return;
 
     states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
-    pos.set(variants.find(Options["UCI_Variant"])->second, fen, Options["UCI_Chess960"], &states->back(), Threads.main(), sfen);
+    pos.set(variants.find(Options["UCI_Variant"])->second, fen, &states->back(), Threads.main(), sfen);
 
     // Parse move list (if any)
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
@@ -100,7 +100,7 @@ namespace {
 
     StateListPtr states(new std::deque<StateInfo>(1));
     Position p;
-    p.set(pos.variant(), pos.fen(), Options["UCI_Chess960"], &states->back(), Threads.main());
+    p.set(pos.variant(), pos.fen(), &states->back(), Threads.main());
 
     Eval::NNUE::verify();
 
@@ -373,7 +373,7 @@ void UCI::loop(int argc, char* argv[]) {
   StateListPtr states(new std::deque<StateInfo>(1));
 
   assert(variants.find(Options["UCI_Variant"])->second != nullptr);
-  pos.set(variants.find(Options["UCI_Variant"])->second, variants.find(Options["UCI_Variant"])->second->startFen, false, &states->back(), Threads.main());
+  pos.set(variants.find(Options["UCI_Variant"])->second, variants.find(Options["UCI_Variant"])->second->startFen, &states->back(), Threads.main());
 
   for (int i = 1; i < argc; ++i)
       cmd += std::string(argv[i]) + " ";
@@ -541,17 +541,6 @@ std::string UCI::square(const Position& pos, Square s) {
 #endif
 }
 
-/// UCI::dropped_piece() generates a piece label string from a Move.
-
-string UCI::dropped_piece(const Position& pos, Move m) {
-  assert(type_of(m) == DROP);
-  if (dropped_piece_type(m) == pos.promoted_piece_type(in_hand_piece_type(m)))
-      // Dropping as promoted piece
-      return std::string{'+', pos.piece_to_char()[in_hand_piece_type(m)]};
-  else
-      return std::string{pos.piece_to_char()[dropped_piece_type(m)]};
-}
-
 
 /// UCI::move() converts a Move to a string in coordinate notation (g1f3, a7a8q).
 /// The only special case is castling, where we print in the e1g1 notation in
@@ -571,29 +560,8 @@ string UCI::move(const Position& pos, Move m) {
 
   if (is_gating(m) && gating_square(m) == to)
       from = to_sq(m), to = from_sq(m);
-  else if (type_of(m) == CASTLING && !pos.is_chess960())
-  {
-      to = make_square(to > from ? pos.castling_kingside_file() : pos.castling_queenside_file(), rank_of(from));
-      // If the castling move is ambiguous with a normal king move, switch to 960 notation
-      if (pos.pseudo_legal(make_move(from, to)))
-          to = to_sq(m);
-  }
 
-  string move = (type_of(m) == DROP ? UCI::dropped_piece(pos, m) + '@'
-                                    : UCI::square(pos, from)) + UCI::square(pos, to);
-
-  if (type_of(m) == PROMOTION)
-      move += pos.piece_to_char()[make_piece(BLACK, promotion_type(m))];
-  else if (type_of(m) == PIECE_PROMOTION)
-      move += '+';
-  else if (type_of(m) == PIECE_DEMOTION)
-      move += '-';
-  else if (is_gating(m))
-  {
-      move += pos.piece_to_char()[make_piece(BLACK, gating_type(m))];
-      if (gating_square(m) != from)
-          move += UCI::square(pos, gating_square(m));
-  }
+  string move = (UCI::square(pos, from)) + UCI::square(pos, to);
 
   return move;
 }
@@ -615,7 +583,7 @@ Move UCI::to_move(const Position& pos, string& str) {
   }
 
   for (const auto& m : MoveList<LEGAL>(pos))
-      if (str == UCI::move(pos, m) || (is_pass(m) && str == UCI::square(pos, from_sq(m)) + UCI::square(pos, to_sq(m))))
+      if (str == UCI::move(pos, m))
           return m;
 
   return MOVE_NONE;

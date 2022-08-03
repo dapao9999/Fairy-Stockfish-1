@@ -62,8 +62,6 @@ namespace {
         Variant* v = chess_variant_base()->init();
         v->variantTemplate = "xiangqi";
         v->pieceToCharTable = "PN.R.AB..K.C..........pn.r.ab..k.c..........";
-        v->maxRank = RANK_10;
-        v->maxFile = FILE_I;
         v->reset_pieces();
         v->add_piece(ROOK, 'r');
         v->add_piece(HORSE, 'n', 'h');

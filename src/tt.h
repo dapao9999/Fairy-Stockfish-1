@@ -31,7 +31,7 @@ namespace Stockfish {
 /// generation  5 bit
 /// pv node     1 bit
 /// bound type  2 bit
-/// move       32 bit (official SF: 16 bit)
+/// move       32 bit
 /// value      16 bit
 /// eval value 16 bit
 

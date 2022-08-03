@@ -19,7 +19,6 @@
 #ifndef MATERIAL_H_INCLUDED
 #define MATERIAL_H_INCLUDED
 
-#include "endgame.h"
 #include "misc.h"
 #include "position.h"
 #include "types.h"
@@ -39,8 +38,6 @@ struct Entry {
 
   Score imbalance() const { return score; }
   Phase game_phase() const { return (Phase)gamePhase; }
-  bool specialized_eval_exists() const { return evaluationFunction != nullptr; }
-  Value evaluate(const Position& pos) const { return (*evaluationFunction)(pos); }
 
   int material_density() const { return materialDensity; }
 
@@ -49,16 +46,11 @@ struct Entry {
   // because the scale factor may also be a function which should be applied to
   // the position. For instance, in KBP vs K endgames, the scaling function looks
   // for rook pawns and wrong-colored bishops.
-  ScaleFactor scale_factor(const Position& pos, Color c) const {
-    ScaleFactor sf = scalingFunction[c] ? (*scalingFunction[c])(pos)
-                                        :  SCALE_FACTOR_NONE;
-    return sf != SCALE_FACTOR_NONE ? sf : ScaleFactor(factor[c]);
+  ScaleFactor scale_factor(Color c) const {
+    return ScaleFactor(factor[c]);
   }
 
   Key key;
-  const EndgameBase<Value>* evaluationFunction;
-  const EndgameBase<ScaleFactor>* scalingFunction[COLOR_NB]; // Could be one for each
-                                                             // side (e.g. KPKP, KBPsK)
   Score score;
   int16_t gamePhase;
   uint8_t factor[COLOR_NB];

@@ -224,17 +224,12 @@ void init(const Variant* v) {
           constexpr int lc = 5;
           constexpr int rm = 5;
           constexpr int r0 = rm + RANK_8;
-          int r1 = rm + (v->maxRank + v->maxFile - 2 * v->capturesToHand) / 2;
+          int r1 = rm + (v->maxRank + v->maxFile) / 2;
           int leaper = pi->steps[MODALITY_QUIET].size() + pi->steps[MODALITY_CAPTURE].size();
           int slider = pi->slider[MODALITY_QUIET].size() + pi->slider[MODALITY_CAPTURE].size() + pi->hopper[MODALITY_QUIET].size() + pi->hopper[MODALITY_CAPTURE].size();
           score = make_score(mg_value(score) * (lc * leaper + r1 * slider) / (lc * leaper + r0 * slider),
                              eg_value(score) * (lc * leaper + r1 * slider) / (lc * leaper + r0 * slider));
       }
-
-      // Piece values saturate earlier in drop variants
-      if (v->capturesToHand)
-          score = make_score(mg_value(score) * 7000 / (7000 + mg_value(score)),
-                             eg_value(score) * 7000 / (7000 + eg_value(score)));
 
       // In variants where checks are prohibited, strong pieces are less mobile, so limit their value 
       if (!v->checking)
@@ -251,12 +246,6 @@ void init(const Variant* v) {
           && v->extinctionPieceTypes.find(ALL_PIECES) != v->extinctionPieceTypes.end())
           score += make_score(0, std::max(KnightValueEg - PieceValue[EG][pt], VALUE_ZERO) / 20);
 
-      // The strongest piece of a variant usually has some dominance, such as rooks in Makruk and Xiangqi.
-      // This does not apply to drop variants.
-      if (pt == strongestPiece && !v->capturesToHand)
-              score += make_score(std::max(QueenValueMg - PieceValue[MG][pt], VALUE_ZERO) / 20,
-                                  std::max(QueenValueEg - PieceValue[EG][pt], VALUE_ZERO) / 20);
-
       // For antichess variants, use negative piece values
       if (v->extinctionValue == VALUE_MATE)
           score = -make_score(mg_value(score) / 8, eg_value(score) / 8 / (1 + !pi->slider[MODALITY_CAPTURE].size()));
@@ -269,10 +258,6 @@ void init(const Variant* v) {
 
       CapturePieceValue[MG][pc] = CapturePieceValue[MG][~pc] = mg_value(score);
       CapturePieceValue[EG][pc] = CapturePieceValue[EG][~pc] = eg_value(score);
-
-      // For drop variants, halve the piece values to compensate for double changes by captures
-      if (v->capturesToHand)
-          score = score / 2;
 
       EvalPieceValue[MG][pc] = EvalPieceValue[MG][~pc] = mg_value(score);
       EvalPieceValue[EG][pc] = EvalPieceValue[EG][~pc] = eg_value(score);
@@ -295,7 +280,7 @@ void init(const Variant* v) {
           File f = std::max(File(edge_distance(file_of(s), v->maxFile)), FILE_A);
           Rank r = rank_of(s);
           psq[ pc][s] = score + (  pt == PAWN  ? PBonus[std::min(r, RANK_8)][std::min(file_of(s), FILE_H)]
-                                 : pt == KING  ? KingBonus[std::clamp(Rank(r - pawnRank + 1), RANK_1, RANK_8)][std::min(f, FILE_D)] * (1 + v->capturesToHand)
+                                 : pt == KING  ? KingBonus[std::clamp(Rank(r - pawnRank + 1), RANK_1, RANK_8)][std::min(f, FILE_D)] * 1
                                  : pt <= QUEEN ? Bonus[pc][std::min(r, RANK_8)][std::min(f, FILE_D)] * (1 + v->blastOnCapture)
                                  : pt == HORSE ? Bonus[KNIGHT][std::min(r, RANK_8)][std::min(f, FILE_D)]
                                  : pt == COMMONER && v->extinctionValue == -VALUE_MATE && v->extinctionPieceTypes.find(COMMONER) != v->extinctionPieceTypes.end() ? KingBonus[std::clamp(Rank(r - pawnRank + 1), RANK_1, RANK_8)][std::min(f, FILE_D)]

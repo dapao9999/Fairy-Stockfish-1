@@ -492,19 +492,22 @@ void Thread::search() {
           double complexPosition = complexity < cMid ? complexity * loSlope + dLow
                                                      : std::min(1.0 + (complexity - cMid) * hiSlope, dMax);
 
-          int bv = (int)(bestValue);
-          bv = bv == 0 ? bv + 1: bv; // Avoid undefined log
-          // Inputs of the neural network
-          int ft[9]={(int)(10*std::sin(bv)), (int)(10*std::cos(bv)), (int)(std::log(abs(bv))),
-                     (int)(std::log10(abs(bv))), (int)(std::cbrt(bv)), (int)(std::log2(abs(bv))),
-                     (int)(std::sqrt(abs(bv))), (int)(std::log(abs(bv)) / 0.47), (int)(std::log(abs(bv)) / 1.18)};
+          double nn = 1.0;
+          if (bestValue >= 0) {
+              int bv = (int)(bestValue);
+              bv = bv == 0 ? bv + 1: bv; // Avoid undefined log
+              // Inputs of the neural network
+              int ft[9]={(int)(10*std::sin(bv)), (int)(10*std::cos(bv)), (int)(std::log(abs(bv))),
+                         (int)(std::log10(abs(bv))), (int)(std::cbrt(bv)), (int)(std::log2(abs(bv))),
+                         (int)(std::sqrt(abs(bv))), (int)(std::log(abs(bv)) / 0.47), (int)(std::log(abs(bv)) / 1.18)};
 
-          // Matrix multiplication
-          int neuron[5] = {0};
-          for (size_t i = 0; i < 5; ++i){
-              neuron[i]= std::max(0, std::inner_product(ft, ft+9, nw[i], 0) + nb[i]); // ReLU activation function
+              // Matrix multiplication
+              int neuron[5] = {0};
+              for (size_t i = 0; i < 5; ++i){
+                  neuron[i]= std::max(0, std::inner_product(ft, ft+9, nw[i], 0) + nb[i]); // ReLU activation function
+              }
+              nn =  std::clamp(std::inner_product(neuron, neuron+5, nwo, 0)/400.0 + nbo, 0.1, 2.5);
           }
-          double nn =  std::clamp(std::inner_product(neuron, neuron+5, nwo, 0)/400.0 + nbo, 0.1, 2.5);
           double totalTime = Time.optimum() * fallingEval * reduction * bestMoveInstability * complexPosition * nn;
 
           // Cap used time in case of a single legal move for a better viewer experience in tournaments
@@ -666,7 +669,7 @@ namespace {
     // At non-PV nodes we check for an early TT cutoff
     if (  !PvNode
         && ss->ttHit
-        && tte->depth() > depth - ((int)thisThread->id() & 0x1)
+        && tte->depth() > depth - ((int)thisThread->id() & 0x1)- (tte->bound() == BOUND_EXACT)
         && ttValue != VALUE_NONE // Possible in case of TT access race
         && (ttValue >= beta ? (tte->bound() & BOUND_LOWER)
                             : (tte->bound() & BOUND_UPPER)))
@@ -699,58 +702,7 @@ namespace {
             return ttValue;
     }
 
-    // Step 5. Tablebases probe
-    if (!rootNode && thisThread->Cardinality)
-    {
-        int piecesCount = pos.count<ALL_PIECES>();
-
-        if (    piecesCount <= thisThread->Cardinality
-            && (piecesCount <  thisThread->Cardinality || depth >= thisThread->ProbeDepth)
-            &&  pos.rule50_count() == 0
-            &&  Options["UCI_Variant"] == "chess"
-            && !pos.can_castle(ANY_CASTLING))
-        {
-            Tablebases::ProbeState err;
-            Tablebases::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
-
-            // Force check of time on the next occasion
-            if (thisThread == Threads.main())
-                static_cast<MainThread*>(thisThread)->callsCnt = 0;
-
-            if (err != Tablebases::ProbeState::FAIL)
-            {
-                thisThread->tbHits.fetch_add(1, std::memory_order_relaxed);
-
-                int drawScore = thisThread->UseRule50 ? 1 : 0;
-
-                // use the range VALUE_MATE_IN_MAX_PLY to VALUE_TB_WIN_IN_MAX_PLY to score
-                value =  wdl < -drawScore ? VALUE_MATED_IN_MAX_PLY + ss->ply + 1
-                       : wdl >  drawScore ? VALUE_MATE_IN_MAX_PLY - ss->ply - 1
-                                          : VALUE_DRAW + 2 * wdl * drawScore;
-
-                Bound b =  wdl < -drawScore ? BOUND_UPPER
-                         : wdl >  drawScore ? BOUND_LOWER : BOUND_EXACT;
-
-                if (    b == BOUND_EXACT
-                    || (b == BOUND_LOWER ? value >= beta : value <= alpha))
-                {
-                    tte->save(posKey, value_to_tt(value, ss->ply), ss->ttPv, b,
-                              std::min(MAX_PLY - 1, depth + 6),
-                              MOVE_NONE, VALUE_NONE);
-
-                    return value;
-                }
-
-                if (PvNode)
-                {
-                    if (b == BOUND_LOWER)
-                        bestValue = value, alpha = std::max(alpha, bestValue);
-                    else
-                        maxValue = value;
-                }
-            }
-        }
-    }
+    // Step 5. Tablebases probe (removed)
 
     CapturePieceToHistory& captureHistory = thisThread->captureHistory;
 
@@ -1010,10 +962,10 @@ moves_loop: // When in check, search starts from here
 
       ss->moveCount = ++moveCount;
 
-      if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
+      /*if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
           sync_cout << "info depth " << depth
                     << " currmove " << UCI::move(pos, move)
-                    << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
+                    << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;*/
       if (PvNode)
           (ss+1)->pv = nullptr;
 
@@ -1576,10 +1528,9 @@ moves_loop: // When in check, search starts from here
       if (    bestValue > VALUE_TB_LOSS_IN_MAX_PLY
           && !givesCheck
           &&  to_sq(move) != prevSq
-          &&  futilityBase > -VALUE_KNOWN_WIN
-          &&  type_of(move) != PROMOTION)
+          &&  futilityBase > -VALUE_KNOWN_WIN)
       {
-
+          mc++; 
           if (moveCount > 3 || mc > 2)
               continue;
 

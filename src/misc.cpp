@@ -159,9 +159,11 @@ string engine_info(bool to_uci) {
 #ifdef LARGEBOARDS
   ss << " LB";
 #endif
-    ss << (to_uci  ? "\nid author ": " by ")
-       << "Fabian Fichter";
-
+  if(to_uci){
+  ss << "\nid author Fabian Fichter\ninfo string 权重分布式训练群: 755655813";
+  }else{
+  ss << " by Fabian Fichter\n欢迎加入权重分布式训练群: 755655813";
+  }
   return ss.str();
 }
 
@@ -500,7 +502,7 @@ void bindThisThread(size_t) {}
 
 /// best_group() retrieves logical processor information using Windows specific
 /// API and returns the best group id for the thread with index idx. Original
-/// code from Texel by Peter 脰sterlund.
+/// code from Texel by Peter ?sterlund.
 
 int best_group(size_t idx) {
 

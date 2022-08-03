@@ -38,8 +38,8 @@ struct Variant {
   std::string variantTemplate = "fairy";
   std::string pieceToCharTable = "-";
   int pocketSize = 0;
-  Rank maxRank = RANK_8;
-  File maxFile = FILE_H;
+  Rank maxRank = RANK_10;
+  File maxFile = FILE_I;
   bool chess960 = false;
   bool twoBoards = false;
   int pieceValue[PHASE_NB][PIECE_TYPE_NB] = {};
@@ -103,7 +103,7 @@ struct Variant {
   bool passOnStalemate = false;
   bool makpongRule = false;
   bool flyingGeneral = false;
-  Rank soldierPromotionRank = RANK_1;
+  Rank soldierPromotionRank = RANK_6;
   EnclosingRule flipEnclosedPieces = NO_ENCLOSING;
   bool freeDrops = false;
 
@@ -219,9 +219,9 @@ struct Variant {
               || std::count(fenBoard.begin(), fenBoard.end(), pieceToChar[make_piece(BLACK, nnueKing)]) != 1)
               nnueKing = NO_PIECE_TYPE;
       }
-      int nnueSquares = (maxRank + 1) * (maxFile + 1);
-      nnueUsePockets = (pieceDrops && (capturesToHand || (!mustDrop && !arrowGating && pieceTypes.size() != 1))) || seirawanGating;
-      int nnuePockets = nnueUsePockets ? 2 * int(maxFile + 1) : 0;
+      int nnueSquares = (RANK_10 + 1) * (FILE_I + 1);
+      nnueUsePockets = false;
+      int nnuePockets = 0;
       int nnueNonDropPieceIndices = (2 * pieceTypes.size() - (nnueKing != NO_PIECE_TYPE)) * nnueSquares;
       int nnuePieceIndices = nnueNonDropPieceIndices + 2 * (pieceTypes.size() - (nnueKing != NO_PIECE_TYPE)) * nnuePockets;
       int i = 0;
@@ -248,7 +248,7 @@ struct Variant {
               Square bitboardSquare = Square(s + s / (maxFile + 1) * (FILE_MAX - maxFile));
               if (   !mobilityRegion[WHITE][nnueKing] || !mobilityRegion[BLACK][nnueKing]
                   || (mobilityRegion[WHITE][nnueKing] & make_bitboard(bitboardSquare))
-                  || (mobilityRegion[BLACK][nnueKing] & make_bitboard(relative_square(BLACK, bitboardSquare, maxRank))))
+                  || (mobilityRegion[BLACK][nnueKing] & make_bitboard(relative_square(BLACK, bitboardSquare, RANK_10))))
               {
                   kingSquareIndex[s] = nnueKingSquare++ * nnuePieceIndices;
               }

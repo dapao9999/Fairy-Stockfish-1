@@ -111,7 +111,7 @@ public:
   Position& operator=(const Position&) = delete;
 
   // FEN string input/output
-  Position& set(const Variant* v, const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th, bool sfen = false);
+  Position& set(const Variant* v, const std::string& fenStr, StateInfo* si, Thread* th, bool sfen = false);
   Position& set(const std::string& code, Color c, StateInfo* si);
   std::string fen(bool sfen = false, bool showPromoted = false, int countStarted = 0, std::string holdings = "-") const;
 
@@ -198,7 +198,6 @@ public:
   PieceType capture_the_flag_piece() const;
   Bitboard capture_the_flag(Color c) const;
   bool flag_move() const;
-  bool check_counting() const;
   int connect_n() const;
   CheckCount checks_remaining(Color c) const;
   MaterialCounting material_counting() const;
@@ -259,7 +258,6 @@ public:
   // Properties of moves
   bool legal(Move m) const;
   bool pseudo_legal(const Move m) const;
-  bool virtual_drop(Move m) const;
   bool capture(Move m) const;
   bool capture_or_promotion(Move m) const;
   bool gives_check(Move m) const;
@@ -292,7 +290,6 @@ public:
   // Other properties of the position
   Color side_to_move() const;
   int game_ply() const;
-  bool is_chess960() const;
   Thread* this_thread() const;
   bool is_immediate_game_end() const;
   bool is_immediate_game_end(Value& result, int ply = 0) const;
@@ -372,8 +369,6 @@ private:
 
   // variant-specific
   const Variant* var;
-  bool tsumeMode;
-  bool chess960;
   int pieceCountInHand[COLOR_NB][PIECE_TYPE_NB];
   int virtualPieces;
   Bitboard promotedPieces;
@@ -914,11 +909,6 @@ inline bool Position::flag_move() const {
   return var->flagMove;
 }
 
-inline bool Position::check_counting() const {
-  assert(var != nullptr);
-  return var->checkCounting;
-}
-
 inline int Position::connect_n() const {
   assert(var != nullptr);
   return var->connectN;
@@ -975,8 +965,6 @@ inline Piece Position::unpromoted_piece_on(Square s) const {
 }
 
 inline Piece Position::moved_piece(Move m) const {
-  if (type_of(m) == DROP)
-      return make_piece(sideToMove, dropped_piece_type(m));
   return piece_on(from_sq(m));
 }
 
@@ -1218,24 +1206,15 @@ inline bool Position::is_promoted(Square s) const {
   return promotedPieces & s;
 }
 
-inline bool Position::is_chess960() const {
-  return chess960;
-}
-
 inline bool Position::capture_or_promotion(Move m) const {
   assert(is_ok(m));
-  return type_of(m) == PROMOTION || type_of(m) == EN_PASSANT || (type_of(m) != CASTLING && !empty(to_sq(m)));
+  return !empty(to_sq(m));
 }
 
 inline bool Position::capture(Move m) const {
   assert(is_ok(m));
   // Castling is encoded as "king captures rook"
-  return (!empty(to_sq(m)) && type_of(m) != CASTLING && from_sq(m) != to_sq(m)) || type_of(m) == EN_PASSANT;
-}
-
-inline bool Position::virtual_drop(Move m) const {
-  assert(is_ok(m));
-  return type_of(m) == DROP && !can_drop(side_to_move(), in_hand_piece_type(m));
+  return !empty(to_sq(m)) && from_sq(m) != to_sq(m);
 }
 
 inline Piece Position::captured_piece() const {

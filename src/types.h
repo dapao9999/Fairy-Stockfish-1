@@ -253,13 +253,6 @@ enum Move : int {
 
 enum MoveType : int {
   NORMAL,
-  EN_PASSANT          = 1 << (2 * SQUARE_BITS),
-  CASTLING           = 2 << (2 * SQUARE_BITS),
-  PROMOTION          = 3 << (2 * SQUARE_BITS),
-  DROP               = 4 << (2 * SQUARE_BITS),
-  PIECE_PROMOTION    = 5 << (2 * SQUARE_BITS),
-  PIECE_DEMOTION     = 6 << (2 * SQUARE_BITS),
-  SPECIAL            = 7 << (2 * SQUARE_BITS),
 };
 
 constexpr int MOVE_TYPE_BITS = 4;
@@ -742,7 +735,7 @@ constexpr Square to_sq(Move m) {
 }
 
 constexpr Square from_sq(Move m) {
-  return type_of(m) == DROP ? SQ_NONE : Square((m >> SQUARE_BITS) & SQUARE_BIT_MASK);
+  return Square((m >> SQUARE_BITS) & SQUARE_BIT_MASK);
 }
 
 // Return relative square when turning the board 180 degrees
@@ -754,10 +747,6 @@ inline int from_to(Move m) {
  return to_sq(m) + (from_sq(m) << SQUARE_BITS);
 }
 
-inline PieceType promotion_type(Move m) {
-  return type_of(m) == PROMOTION ? PieceType((m >> (2 * SQUARE_BITS + MOVE_TYPE_BITS)) & (PIECE_TYPE_NB - 1)) : NO_PIECE_TYPE;
-}
-
 inline PieceType gating_type(Move m) {
   return PieceType((m >> (2 * SQUARE_BITS + MOVE_TYPE_BITS)) & (PIECE_TYPE_NB - 1));
 }
@@ -767,11 +756,7 @@ inline Square gating_square(Move m) {
 }
 
 inline bool is_gating(Move m) {
-  return gating_type(m) && (type_of(m) == NORMAL || type_of(m) == CASTLING);
-}
-
-inline bool is_pass(Move m) {
-  return type_of(m) == SPECIAL && from_sq(m) == to_sq(m);
+  return gating_type(m);
 }
 
 constexpr Move make_move(Square from, Square to) {
@@ -784,7 +769,7 @@ inline Move make(Square from, Square to, PieceType pt = NO_PIECE_TYPE) {
 }
 
 constexpr Move make_drop(Square to, PieceType pt_in_hand, PieceType pt_dropped) {
-  return Move((pt_in_hand << (2 * SQUARE_BITS + MOVE_TYPE_BITS + PIECE_TYPE_BITS)) + (pt_dropped << (2 * SQUARE_BITS + MOVE_TYPE_BITS)) + DROP + to);
+  return Move((pt_in_hand << (2 * SQUARE_BITS + MOVE_TYPE_BITS + PIECE_TYPE_BITS)) + (pt_dropped << (2 * SQUARE_BITS + MOVE_TYPE_BITS)) + 16384 + to);
 }
 
 constexpr Move reverse_move(Move m) {
@@ -809,7 +794,7 @@ inline bool is_custom(PieceType pt) {
 }
 
 inline bool is_ok(Move m) {
-  return from_sq(m) != to_sq(m) || type_of(m) == PROMOTION || type_of(m) == SPECIAL; // Catch MOVE_NULL and MOVE_NONE
+  return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
 }
 
 inline int dist(Direction d) {

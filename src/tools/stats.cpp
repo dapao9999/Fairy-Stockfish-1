@@ -638,7 +638,7 @@ namespace Stockfish::Tools::Stats
         MoveTypeCounter() :
             m_total(0),
             m_normal(0),
-            m_capture(0),
+            m_capture(0)
         {
 
         }

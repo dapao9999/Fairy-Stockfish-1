@@ -337,7 +337,7 @@ namespace Stockfish::Tools
                                     fen_found = true;
 
                                     StateInfo si;
-                                    pos.set(pos.variant(), str_fen, false, &si, th);
+                                    pos.set(pos.variant(), str_fen, &si, th);
                                     pos.sfen_pack(psv.sfen);
                                 }
 

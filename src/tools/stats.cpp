@@ -639,9 +639,6 @@ namespace Stockfish::Tools::Stats
             m_total(0),
             m_normal(0),
             m_capture(0),
-            m_promotion(0),
-            m_castling(0),
-            m_enpassant(0)
         {
 
         }
@@ -653,13 +650,7 @@ namespace Stockfish::Tools::Stats
             if (!pos.empty(to_sq(move)))
                 m_capture += 1;
 
-            if (type_of(move) == CASTLING)
-                m_castling += 1;
-            else if (type_of(move) == PROMOTION)
-                m_promotion += 1;
-            else if (type_of(move) == EN_PASSANT)
-                m_enpassant += 1;
-            else if (type_of(move) == NORMAL)
+            if (type_of(move) == NORMAL)
                 m_normal += 1;
         }
 
@@ -668,9 +659,6 @@ namespace Stockfish::Tools::Stats
             m_total = 0;
             m_normal = 0;
             m_capture = 0;
-            m_promotion = 0;
-            m_castling = 0;
-            m_enpassant = 0;
         }
 
         [[nodiscard]] const std::string& get_name() const override
@@ -685,9 +673,6 @@ namespace Stockfish::Tools::Stats
             header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Total", m_total);
             header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Normal", m_normal);
             header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Capture", m_capture);
-            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Promotion", m_promotion);
-            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("Castling", m_castling);
-            header.emplace_child<StatisticOutputEntryValue<std::uint64_t>>("En-passant", m_enpassant);
             return out;
         }
 
@@ -695,9 +680,6 @@ namespace Stockfish::Tools::Stats
         std::uint64_t m_total;
         std::uint64_t m_normal;
         std::uint64_t m_capture;
-        std::uint64_t m_promotion;
-        std::uint64_t m_castling;
-        std::uint64_t m_enpassant;
     };
 
     struct PieceCountCounter : StatisticGathererBase

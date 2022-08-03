@@ -275,11 +275,11 @@ namespace Stockfish::Tools
             if (opening_book != nullptr)
             {
                 auto& fen = opening_book->next_fen();
-                pos.set(variants.find(Options["UCI_Variant"])->second, fen, false, &si, &th);
+                pos.set(variants.find("xiangqi")->second, fen, &si, &th);
             }
             else
             {
-                pos.set(variants.find(Options["UCI_Variant"])->second, variants.find(Options["UCI_Variant"])->second->startFen, false, &si, &th);
+                pos.set(variants.find("xiangqi")->second, variants.find("xiangqi")->second->startFen, &si, &th);
             }
 
             int resign_counter = 0;
@@ -395,7 +395,7 @@ namespace Stockfish::Tools
                         for (Color c : { WHITE, BLACK })
                             fen.insert(fen.find(']'), 1, pos.piece_to_char()[make_piece(c, pt)]);
                     }
-                    pos.set(variants.find(Options["UCI_Variant"])->second, fen, false, &si, &th);
+                    pos.set(variants.find("xiangqi")->second, fen, &si, &th);
                 }
             }
         }

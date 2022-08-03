@@ -216,11 +216,11 @@ namespace Stockfish::Tools
             if (opening_book != nullptr)
             {
                 auto& fen = opening_book->next_fen();
-                pos.set(pos.variant(), fen, false, &si, &th);
+                pos.set(pos.variant(), fen, &si, &th);
             }
             else
             {
-                pos.set(pos.variant(), pos.variant()->startFen, false, &si, &th);
+                pos.set(pos.variant(), pos.variant()->startFen, &si, &th);
             }
 
             for(int ply = 0; ply < params.exploration_max_ply; ++ply)

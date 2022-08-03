@@ -293,7 +293,7 @@ namespace Stockfish::Tools {
         si->accumulator.computed[WHITE] = false;
         si->accumulator.computed[BLACK] = false;
         pos.st = si;
-        pos.var = variants.find(Options["UCI_Variant"])->second;
+        pos.var = variants.find("xiangqi")->second;
 
         // Active color
         pos.sideToMove = (Color)stream.read_one_bit();
@@ -393,7 +393,6 @@ namespace Stockfish::Tools {
 
         assert(stream.get_cursor() <= 512);
 
-        pos.chess960 = false;
         pos.thisThread = th;
         pos.set_state(pos.st);
 

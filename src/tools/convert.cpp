@@ -25,10 +25,10 @@
 #include <chrono>
 #include <random>
 #include <regex>
-#include <filesystem>
+#include <experimental/filesystem>
 
 using namespace std;
-namespace sys = std::filesystem;
+namespace sys = experimental::filesystem;
 
 namespace Stockfish::Tools
 {

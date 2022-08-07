@@ -2,7 +2,7 @@ name: Linux
 
 on:
   push:
-    branches: [ master, tools ]
+    branches: [ tools ]
 
 jobs:
   linux:

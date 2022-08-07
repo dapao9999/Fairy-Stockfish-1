@@ -50,6 +50,7 @@ struct Variant {
   std::string pieceToCharSynonyms = std::string(PIECE_NB, ' ');
   std::string startFen = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1";
   Bitboard mobilityRegion[COLOR_NB][PIECE_TYPE_NB] = {};
+  Bitboard boardbb[COLOR_NB][PIECE_TYPE_NB] = {};
   Rank promotionRank = RANK_8;
   std::set<PieceType, std::greater<PieceType> > promotionPieceTypes = { QUEEN, ROOK, BISHOP, KNIGHT };
   bool sittuyinPromotion = false;
@@ -112,7 +113,7 @@ struct Variant {
   int nFoldRule = 3;
   Value nFoldValue = VALUE_DRAW;
   bool nFoldValueAbsolute = false;
-  bool perpetualCheckIllegal = false;
+  bool perpetualCheckIllegal = true;
   bool moveRepetitionIllegal = false;
   ChasingRule chasingRule = NO_CHASING;
   Value stalemateValue = VALUE_DRAW;
@@ -270,23 +271,20 @@ struct Variant {
 
       // For endgame evaluation to be applicable, no special win rules must apply.
       // Furthermore, rules significantly changing game mechanics also invalidate it.
-      endgameEval = std::none_of(pieceTypes.begin(), pieceTypes.end(), [this](PieceType pt) {
-                                    return mobilityRegion[WHITE][pt] || mobilityRegion[BLACK][pt];
-                                })
-                    && extinctionValue == VALUE_NONE
-                    && checkmateValue == -VALUE_MATE
-                    && stalemateValue == VALUE_DRAW
-                    && !materialCounting
-                    && !flagPiece
-                    && !mustCapture
-                    && !connectN
-                    && !blastOnCapture
-                    && !capturesToHand
-                    && kingType == KING;
+      endgameEval = false;
 
 
       return this;
   }
+
+  void late_init() {
+      for (Color c : {WHITE, BLACK})
+          for (int pt = 0; pt < PIECE_TYPE_NB; pt++) {
+              auto board_bb = board_size_bb(maxFile, maxRank);
+              boardbb[c][pt] = mobilityRegion[c][pt] ? mobilityRegion[c][pt] & board_bb : board_bb;
+          }
+  }
+
 };
 
 class VariantMap : public std::map<std::string, const Variant*> {

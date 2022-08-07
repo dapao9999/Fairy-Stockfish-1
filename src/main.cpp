@@ -44,13 +44,15 @@ int main(int argc, char* argv[]) {
   CommandLine::init(argc, argv);
   UCI::init(Options);
   Tune::init();
-  PSQT::init(variants.find(Options["UCI_Variant"])->second);
+  PSQT::init(variants.find("xiangqi")->second);
   Bitboards::init();
   Position::init();
   Bitbases::init();
   Threads.set(size_t(Options["Threads"]));
   Search::clear(); // After threads are up
   Eval::NNUE::init();
+
+  const_cast<Variant*>(variants.find("xiangqi")->second)->late_init();
 
   UCI::loop(argc, argv);
 

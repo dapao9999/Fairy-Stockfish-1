@@ -1410,14 +1410,6 @@ namespace {
     pe = Pawns::probe(pos);
     score += pe->pawn_score(WHITE) - pe->pawn_score(BLACK);
 
-    // Early exit if score is high
-    auto lazy_skip = [&](Value lazyThreshold) {
-        return abs(mg_value(score) + eg_value(score)) / 2 > lazyThreshold + pos.non_pawn_material() / 64;
-    };
-
-    if (lazy_skip(LazyThreshold1) && Options["UCI_Variant"] == "chess")
-        goto make_v;
-
     // Main evaluation begins here
     std::memset(attackedBy, 0, sizeof(attackedBy));
     initialize<WHITE>();
@@ -1435,9 +1427,6 @@ namespace {
     score +=  king<   WHITE>() - king<   BLACK>()
             + passed< WHITE>() - passed< BLACK>()
             + variant<WHITE>() - variant<BLACK>();
-
-    if (lazy_skip(LazyThreshold2) && Options["UCI_Variant"] == "chess")
-        goto make_v;
 
     score +=  threats<WHITE>() - threats<BLACK>()
             + space<  WHITE>() - space<  BLACK>();

@@ -167,7 +167,7 @@ top:
   case QSEARCH_TT:
   case PROBCUT_TT:
       ++stage;
-      assert(pos.legal(ttMove) == MoveList<LEGAL>(pos).contains(ttMove) || pos.virtual_drop(ttMove));
+      assert(pos.legal(ttMove) == MoveList<LEGAL>(pos).contains(ttMove));
       return ttMove;
 
   case CAPTURE_INIT:

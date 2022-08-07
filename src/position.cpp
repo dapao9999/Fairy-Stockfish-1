@@ -689,73 +689,35 @@ Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners
 
 Bitboard Position::attackers_to(Square s, Bitboard occupied, Color c, Bitboard janggiCannons) const {
 
-  // Use a faster version for variants with moderate rule variations
-  if (var->fastAttacks)
-  {
-      return  (pawn_attacks_bb(~c, s)          & pieces(c, PAWN))
-            | (attacks_bb<KNIGHT>(s)           & pieces(c, KNIGHT, ARCHBISHOP, CHANCELLOR))
-            | (attacks_bb<  ROOK>(s, occupied) & pieces(c, ROOK, QUEEN, CHANCELLOR))
-            | (attacks_bb<BISHOP>(s, occupied) & pieces(c, BISHOP, QUEEN, ARCHBISHOP))
-            | (attacks_bb<KING>(s)             & pieces(c, KING, COMMONER));
-  }
-
-  // Use a faster version for selected fairy pieces
-  if (var->fastAttacks2)
-  {
-      return  (pawn_attacks_bb(~c, s)             & pieces(c, PAWN, BREAKTHROUGH_PIECE, GOLD))
-            | (attacks_bb<KNIGHT>(s)              & pieces(c, KNIGHT))
-            | (attacks_bb<  ROOK>(s, occupied)    & (  pieces(c, ROOK, QUEEN, DRAGON)
-                                                     | (pieces(c, LANCE) & PseudoAttacks[~c][LANCE][s])))
-            | (attacks_bb<BISHOP>(s, occupied)    & pieces(c, BISHOP, QUEEN, DRAGON_HORSE))
-            | (attacks_bb<KING>(s)                & pieces(c, KING, COMMONER))
-            | (attacks_bb<FERS>(s)                & pieces(c, FERS, DRAGON, SILVER))
-            | (attacks_bb<WAZIR>(s)               & pieces(c, WAZIR, DRAGON_HORSE, GOLD))
-            | (LeaperAttacks[~c][SHOGI_KNIGHT][s] & pieces(c, SHOGI_KNIGHT))
-            | (LeaperAttacks[~c][SHOGI_PAWN][s]   & pieces(c, SHOGI_PAWN, SILVER));
-  }
-
   Bitboard b = 0;
-  for (PieceType pt : piece_types())
-      if (board_bb(c, pt) & s)
+
+  auto add_attacks = [&](PieceType pt) {
+    if (board_bb(c, pt) & s)
+    {
+      PieceType move_pt = pt == KING ? king_type() : pt;
+      // Consider asymmetrical moves (e.g., horse)
+      if (AttackRiderTypes[move_pt] & ASYMMETRICAL_RIDERS)
       {
-          PieceType move_pt = pt == KING ? king_type() : pt;
-          // Consider asymmetrical moves (e.g., horse)
-          if (AttackRiderTypes[move_pt] & ASYMMETRICAL_RIDERS)
+          Bitboard asymmetricals = PseudoAttacks[~c][move_pt][s] & pieces(c, pt);
+          while (asymmetricals)
           {
-              Bitboard asymmetricals = PseudoAttacks[~c][move_pt][s] & pieces(c, pt);
-              while (asymmetricals)
-              {
-                  Square s2 = pop_lsb(asymmetricals);
-                  if (attacks_bb(c, move_pt, s2, occupied) & s)
-                      b |= s2;
-              }
+              Square s2 = pop_lsb(asymmetricals);
+              if (attacks_bb(c, move_pt, s2, occupied) & s)
+                  b |= s2;
           }
-          else
-              b |= attacks_bb(~c, move_pt, s, occupied) & pieces(c, pt);
       }
+      else
+          b |= attacks_bb(~c, move_pt, s, occupied) & pieces(c, pt);
+    }
+  };
 
-  // Consider special move of neang in cambodian chess
-  if (cambodian_moves())
-  {
-      Square fers_sq = s + 2 * (c == WHITE ? SOUTH : NORTH);
-      if (is_ok(fers_sq))
-          b |= pieces(c, FERS) & gates(c) & fers_sq;
-  }
-
-  // Janggi palace moves
-  if (diagonal_lines() & s)
-  {
-      Bitboard diags = 0;
-      if (king_type() == WAZIR)
-          diags |= attacks_bb(~c, FERS, s, occupied) & pieces(c, KING);
-      diags |= attacks_bb(~c, FERS, s, occupied) & pieces(c, WAZIR);
-      diags |= attacks_bb(~c, PAWN, s, occupied) & pieces(c, SOLDIER);
-      diags |= rider_attacks_bb<RIDER_BISHOP>(s, occupied) & pieces(c, ROOK);
-      diags |=  rider_attacks_bb<RIDER_CANNON_DIAG>(s, occupied)
-              & rider_attacks_bb<RIDER_CANNON_DIAG>(s, occupied & ~janggiCannons)
-              & pieces(c, JANGGI_CANNON);
-      b |= diags & diagonal_lines();
-  }
+  add_attacks(PieceType::ROOK);
+  add_attacks(PieceType::FERS);
+  add_attacks(PieceType::CANNON);
+  add_attacks(PieceType::SOLDIER);
+  add_attacks(PieceType::HORSE);
+  add_attacks(PieceType::ELEPHANT);
+  add_attacks(PieceType::KING);
 
   // Unpromoted soldiers
   if (b & pieces(SOLDIER) && relative_rank(c, s, max_rank()) < var->soldierPromotionRank)
@@ -819,8 +781,6 @@ bool Position::legal(Move m) const {
   {
       Square kto = to;
       Bitboard occupied = (pieces() ^ from) | kto;
-      if (capture(m) && blast_on_capture())
-          occupied &= ~((attacks_bb<KING>(kto) & (pieces() ^ pieces(PAWN))) | kto);
       Bitboard pseudoRoyals = st->pseudoRoyals & pieces(sideToMove);
       Bitboard pseudoRoyalsTheirs = st->pseudoRoyals & pieces(~sideToMove);
       if (is_ok(from) && (pseudoRoyals & from))
@@ -1643,7 +1603,7 @@ bool Position::is_optional_game_end(Value& result, int ply, int countStarted) co
               if (   stp->key == st->key
                   && ++cnt + 1 == (ply > i && !var->moveRepetitionIllegal ? 2 : n_fold_rule()))
               {
-                  result = convert_mate_value(  var->perpetualCheckIllegal && (perpetualThem || perpetualUs) ? (!perpetualUs ? VALUE_MATE : !perpetualThem ? -VALUE_MATE : VALUE_DRAW)
+                  result = convert_mate_value(  (perpetualThem || perpetualUs) ? (!perpetualUs ? VALUE_MATE : !perpetualThem ? -VALUE_MATE : VALUE_DRAW)
                                               : var->chasingRule && (chaseThem || chaseUs) ? (!chaseUs ? VALUE_MATE : !chaseThem ? -VALUE_MATE : VALUE_DRAW)
                                               : var->nFoldValueAbsolute && sideToMove == BLACK ? -var->nFoldValue
                                               : var->nFoldValue, ply);
@@ -1744,9 +1704,14 @@ Bitboard Position::chased() const {
       return b;
 
   Bitboard pins = blockers_for_king(sideToMove);
-      Bitboard kingFilePieces = file_bb(file_of(square<KING>(~sideToMove))) & pieces(sideToMove);
-      if ((kingFilePieces & pieces(sideToMove, KING)) && !more_than_one(kingFilePieces & ~pieces(KING)))
-          pins |= kingFilePieces & ~pieces(KING);
+  Square ourKing = square<KING>(sideToMove);
+  Square oppKing = square<KING>(~sideToMove);
+  if (file_bb(file_of(ourKing)) & file_bb(file_of(oppKing))) {
+    Bitboard kingFilePieces = between_bb(ourKing, oppKing) ^ square_bb(oppKing);
+    if (!more_than_one(kingFilePieces & pieces()))
+      pins |= kingFilePieces & pieces(sideToMove);
+  }
+
   auto addChased = [&](Square attackerSq, PieceType attackerType, Bitboard attacks) {
       if (attacks & ~b)
       {
@@ -1869,55 +1834,6 @@ bool Position::has_repeated() const {
         stc = stc->previous;
     }
     return false;
-}
-
-
-/// Position::has_game_cycle() tests if the position has a move which draws by repetition,
-/// or an earlier position has a move that directly reaches the current position.
-
-bool Position::has_game_cycle(int ply) const {
-
-  int j;
-
-  int end = std::min(st->rule50, st->pliesFromNull);
-
-  if (end < 3 || var->nFoldValue != VALUE_DRAW || var->perpetualCheckIllegal || var->materialCounting || var->moveRepetitionIllegal)
-    return false;
-
-  Key originalKey = st->key;
-  StateInfo* stp = st->previous;
-
-  for (int i = 3; i <= end; i += 2)
-  {
-      stp = stp->previous->previous;
-
-      Key moveKey = originalKey ^ stp->key;
-      if (   (j = H1(moveKey), cuckoo[j] == moveKey)
-          || (j = H2(moveKey), cuckoo[j] == moveKey))
-      {
-          Move move = cuckooMove[j];
-          Square s1 = from_sq(move);
-          Square s2 = to_sq(move);
-
-          if (!((between_bb(s1, s2) ^ s2) & pieces()))
-          {
-              if (ply > i)
-                  return true;
-
-              // For nodes before or at the root, check that the move is a
-              // repetition rather than a move to the current position.
-              // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in
-              // the same location, so we have to select which square to check.
-              if (color_of(piece_on(empty(s1) ? s2 : s1)) != side_to_move())
-                  continue;
-
-              // For repetitions before or at the root, require one more
-              if (stp->repetition)
-                  return true;
-          }
-      }
-  }
-  return false;
 }
 
 

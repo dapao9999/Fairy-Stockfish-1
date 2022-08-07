@@ -81,7 +81,6 @@ namespace {
         v->doubleStep = false;
         v->castling = false;
         v->stalemateValue = -VALUE_MATE;
-        v->perpetualCheckIllegal = true;
         v->flyingGeneral = true;
         v->soldierPromotionRank = RANK_6;
         v->chasingRule = AXF_CHASING;

@@ -204,14 +204,6 @@ void init(const Variant* v) {
       Piece pc = make_piece(WHITE, pt);
 
       Score score = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
-
-      // Consider promotion types in pawn score
-      if (pt == PAWN)
-      {
-          score -= make_score(0, (QueenValueEg - maxPromotion) / 100);
-          if (v->blastOnCapture)
-              score += make_score(mg_value(score) * 3 / 2, eg_value(score));
-      }
       
       const PieceInfo* pi = pieceMap.find(pt)->second;
       bool isSlider = pi->slider[MODALITY_QUIET].size() || pi->slider[MODALITY_CAPTURE].size() || pi->hopper[MODALITY_QUIET].size() || pi->hopper[MODALITY_CAPTURE].size();
@@ -235,10 +227,6 @@ void init(const Variant* v) {
       if (!v->checking)
           score = make_score(std::min(mg_value(score), Value(1800)) / 2,
                              std::min(eg_value(score), Value(1800)) * 3 / 5);
-
-      // Adjust piece values for atomic captures
-      if (v->blastOnCapture)
-          score = make_score(mg_value(score) * 7000 / (7000 + mg_value(score)), eg_value(score));
 
       // In variants such as horde where all pieces need to be captured, weak pieces such as pawns are more useful
       if (   v->extinctionValue == -VALUE_MATE
@@ -279,8 +267,7 @@ void init(const Variant* v) {
       {
           File f = std::max(File(edge_distance(file_of(s), v->maxFile)), FILE_A);
           Rank r = rank_of(s);
-          psq[ pc][s] = score + (  pt == PAWN  ? PBonus[std::min(r, RANK_8)][std::min(file_of(s), FILE_H)]
-                                 : pt == KING  ? KingBonus[std::clamp(Rank(r - pawnRank + 1), RANK_1, RANK_8)][std::min(f, FILE_D)] * 1
+          psq[ pc][s] = score + (  pt == KING  ? KingBonus[std::clamp(Rank(r - pawnRank + 1), RANK_1, RANK_8)][std::min(f, FILE_D)] * 1
                                  : pt <= QUEEN ? Bonus[pc][std::min(r, RANK_8)][std::min(f, FILE_D)] * (1 + v->blastOnCapture)
                                  : pt == HORSE ? Bonus[KNIGHT][std::min(r, RANK_8)][std::min(f, FILE_D)]
                                  : pt == COMMONER && v->extinctionValue == -VALUE_MATE && v->extinctionPieceTypes.find(COMMONER) != v->extinctionPieceTypes.end() ? KingBonus[std::clamp(Rank(r - pawnRank + 1), RANK_1, RANK_8)][std::min(f, FILE_D)]

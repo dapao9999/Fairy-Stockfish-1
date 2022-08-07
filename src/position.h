@@ -298,7 +298,6 @@ public:
   bool is_game_end(Value& result, int ply = 0) const;
   Value material_counting_result() const;
   bool is_draw(int ply) const;
-  bool has_game_cycle(int ply) const;
   bool has_repeated() const;
   Bitboard chased() const;
   int counting_limit() const;
@@ -417,7 +416,7 @@ inline Bitboard Position::board_bb() const {
 
 inline Bitboard Position::board_bb(Color c, PieceType pt) const {
   assert(var != nullptr);
-  return var->mobilityRegion[c][pt] ? var->mobilityRegion[c][pt] & board_bb() : board_bb();
+  return var->boardbb[c][pt];
 }
 
 inline const std::set<PieceType>& Position::piece_types() const {
